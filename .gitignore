@@ -1,9 +1,9 @@
-[Ll]ibrary/
-[Tt]emp/
-[Oo]bj/
-[Bb]uild/
-[Bb]uilds/
-Assets/AssetStoreTools*
+SymbolTools/[Ll]ibrary/
+SymbolTools/[Tt]emp/
+SymbolTools/[Oo]bj/
+SymbolTools/[Bb]uild/
+SymbolTools/[Bb]uilds/
+SymbolTools/Assets/AssetStoreTools*
 
 # Visual Studio cache directory
 .vs/
