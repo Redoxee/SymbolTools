@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 using UnityEditor;
+using System.Linq;
 
 namespace AntonMakesGames.Tools
 {
@@ -39,14 +40,16 @@ namespace AntonMakesGames.Tools
             {
                 m_defineData = AssetDatabase.LoadAssetAtPath<DefineData>(PlayerPrefs.GetString(DataName));
             }
+            m_currentGroupTarget = EditorUserBuildSettings.selectedBuildTargetGroup;
         }
         
         private bool m_settings = false;
         private string m_additionalDefine;
 
+        private BuildTargetGroup m_currentGroupTarget;
+
         public void OnGUI()
         {
-//            m_settings = EditorGUILayout.BeginToggleGroup("Settings", m_settings);
             m_settings = EditorGUILayout.Foldout(m_settings, "Settings");
             if (m_settings)
             {
@@ -74,7 +77,7 @@ namespace AntonMakesGames.Tools
                         m_additionalDefine = EditorGUILayout.TextField(m_additionalDefine);
                         if (GUILayout.Button("Add", GUILayout.Width(40)))
                         {
-                            bool added = Add(m_additionalDefine);
+                            bool added = Add(m_currentGroupTarget, m_additionalDefine);
                             if (added)
                             {
                                 m_additionalDefine = "";
@@ -82,11 +85,6 @@ namespace AntonMakesGames.Tools
                         }
                     }
                     GUILayout.EndHorizontal();
-                }
-                
-                if (GUILayout.Button("Open Player settings"))
-                {
-                    EditorApplication.ExecuteMenuItem("Edit/Project Settings/Player");
                 }
 
                 EditorGUI.indentLevel--;
@@ -99,15 +97,44 @@ namespace AntonMakesGames.Tools
                 return;
             }
 
+            BuildTargetGroup prev = m_currentGroupTarget;
+            m_currentGroupTarget = (BuildTargetGroup)EditorGUILayout.EnumPopup(m_currentGroupTarget);
+            if (prev != m_currentGroupTarget)
+            {
+                m_defineData.LastTargetSelected = m_currentGroupTarget;
+                EditorUtility.SetDirty(m_defineData);
+            }
+
+
             if (m_defineData.Collection.Count > 0)
             {
                 DisplaySymbols();
 
-                if (GUILayout.Button("Apply"))
+                GUILayout.Space(10f);
+
+                string label = "Apply";
+                bool warning = EditorUserBuildSettings.selectedBuildTargetGroup != m_currentGroupTarget;
+                if (warning)
                 {
-                    Set();
+                    label = "Apply (*)";
+                }
+                if (GUILayout.Button(label))
+                {
+                    Set(m_currentGroupTarget);
                     Save();
                 }
+                if (warning)
+                {
+                    GUILayout.Label("Selected Target is not the same as the current build target");
+                }
+
+
+                GUILayout.Space(20f);
+            }
+
+            if (GUILayout.Button("Open Player settings"))
+            {
+                EditorApplication.ExecuteMenuItem("Edit/Project Settings/Player");
             }
         }
 
@@ -122,7 +149,12 @@ namespace AntonMakesGames.Tools
             GUILayout.BeginVertical();
             foreach (var def in m_defineData.Collection)
             {
-                def.IsActive = GUILayout.Toggle(def.IsActive, def.Name);
+                var isActive = def.IsActiveOnTarget(m_currentGroupTarget);
+                var newValue = GUILayout.Toggle(isActive, def.Name);
+                if (isActive != newValue)
+                {
+                    def.SetValueOnTarget(m_currentGroupTarget, newValue);
+                }
             }
             GUILayout.EndVertical();
         }
@@ -142,6 +174,7 @@ namespace AntonMakesGames.Tools
                 if (GUILayout.Button("Create Data"))
                 {
                     m_defineData = S_CreateDefineData();
+                    m_defineData.LastTargetSelected = EditorUserBuildSettings.selectedBuildTargetGroup;
                     Grab();
                 }
             }
@@ -164,44 +197,49 @@ namespace AntonMakesGames.Tools
 
         private void Grab()
         {
-            var currentGroup = EditorUserBuildSettings.selectedBuildTargetGroup;
-            string current = PlayerSettings.GetScriptingDefineSymbolsForGroup(currentGroup);
-            var strArray = current.Split(';');
-            foreach (string s in strArray)
+            foreach (BuildTargetGroup t in Enum.GetValues(typeof(BuildTargetGroup)))
             {
-                if (!string.IsNullOrEmpty(s))
+                string current = PlayerSettings.GetScriptingDefineSymbolsForGroup(t);
+                var strArray = current.Split(';');
+                foreach (string s in strArray)
                 {
-                    Add(s);
+                    if (!string.IsNullOrEmpty(s))
+                    {
+                        Add(t, s);
+                    }
                 }
             }
         }
 
-        private bool Add(string s)
+        private bool Add(BuildTargetGroup t,string s)
         {
-            if (!string.IsNullOrEmpty(s) && !m_defineData.Contains(s))
+            if (!string.IsNullOrEmpty(s))
             {
-                m_defineData.Collection.Add(new DefineEntity
+                DefineEntity entity = m_defineData.Get(s);
+                if (entity == null)
                 {
-                    Name = s,
-                    IsActive = true,
-                });
+                    entity = new DefineEntity();
+                    entity.Name = s;
+                    m_defineData.Add(entity);
+                }
+                entity.SetValueOnTarget(t, true);
+                EditorUtility.SetDirty(m_defineData);
                 return true;
             }
             return false;
         }
 
-        private void Set()
+        private void Set(BuildTargetGroup t)
         {
             StringBuilder sb = new StringBuilder();
             foreach (DefineEntity def in m_defineData.Collection)
             {
-                if (def.IsActive)
+                if (def.IsActiveOnTarget(t))
                 {
                     sb.Append(def.Name).Append(';');
                 }
             }
-            var currentGroup = EditorUserBuildSettings.selectedBuildTargetGroup;
-            PlayerSettings.SetScriptingDefineSymbolsForGroup(currentGroup, sb.ToString());
+            PlayerSettings.SetScriptingDefineSymbolsForGroup(t, sb.ToString());
         }
         
         static DefineData S_CreateDefineData()
@@ -214,5 +252,6 @@ namespace AntonMakesGames.Tools
         }
 
         #endregion
+
     }
 }

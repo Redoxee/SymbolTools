@@ -563,9 +563,9 @@ PlayerSettings:
   webGLCompressionFormat: 1
   webGLLinkerTarget: 0
   scriptingDefineSymbols:
-    1: Example_DEMO_MODE;Example_EASY_MODE
-    4: UNITY_POST_PROCESSING_STACK_V2
-    7: UNITY_POST_PROCESSING_STACK_V2
+    1: Example_PC;Example_multiple
+    4: Example_DEMO_MODE
+    7: Example_DEMO_MODE;Example_multiple
     13: UNITY_POST_PROCESSING_STACK_V2
     17: UNITY_POST_PROCESSING_STACK_V2
     18: UNITY_POST_PROCESSING_STACK_V2
