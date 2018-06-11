@@ -9,7 +9,7 @@ namespace AntonMakesGames.Tools
     public class DefineSymbolsHelper : EditorWindow
     {
         private const string DATA_PATH = "Assets/";
-        const string DATA_NAME_BASE = "DefineData.Asset";
+        const string DATA_NAME_BASE = "defineData.Asset";
         private string DataName
         {
             get {
@@ -95,7 +95,7 @@ namespace AntonMakesGames.Tools
 
             if (m_defineData == null)
             {
-                GUILayout.Label("Define data not setted!");
+                GUILayout.Label("Define data not set!");
                 return;
             }
 
