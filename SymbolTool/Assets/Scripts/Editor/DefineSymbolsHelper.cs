@@ -4,6 +4,7 @@ using System.Text;
 using UnityEngine;
 using UnityEditor;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace AntonMakesGames.Tools
 {
@@ -46,10 +47,13 @@ namespace AntonMakesGames.Tools
         private bool m_settings = false;
         private string m_additionalDefine;
 
+        private Vector2 m_scrollPos;
+
         private BuildTargetGroup m_currentGroupTarget;
 
         public void OnGUI()
         {
+            m_scrollPos = GUILayout.BeginScrollView(m_scrollPos);
             m_settings = EditorGUILayout.Foldout(m_settings, "Settings");
             if (m_settings)
             {
@@ -66,6 +70,11 @@ namespace AntonMakesGames.Tools
                     if (GUILayout.Button("Grab Values"))
                     {
                         Grab();
+                    }
+
+                    if (GUILayout.Button("Search define in code (Heavy)"))
+                    {
+                        SearchInCodeFiles();
                     }
 
                     if (GUILayout.Button("Save"))
@@ -136,6 +145,8 @@ namespace AntonMakesGames.Tools
             {
                 EditorApplication.ExecuteMenuItem("Edit/Project Settings/Player");
             }
+
+            GUILayout.EndScrollView();
         }
 
 
@@ -211,6 +222,37 @@ namespace AntonMakesGames.Tools
             }
         }
 
+        private void SearchInCodeFiles()
+        {
+            string[] allTextAsset = AssetDatabase.FindAssets("t:TextAsset");
+            foreach (var guid in allTextAsset)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                if (path.Length > 3 && path.Substring(path.Length - 3, 3) == ".cs")
+                {
+                    Debug.Log(path);
+                    TextAsset textAsset = AssetDatabase.LoadAssetAtPath<TextAsset>(path);
+                    string[] lines = Regex.Split(textAsset.text, "\n");
+                    foreach (string line in lines)
+                    {
+                        string li = line.Trim().Replace("\r", "");
+                        if (li.Length == 0)
+                        {
+                            continue;
+                        }
+                        if (!li.Contains("#define"))
+                        {
+                            break; // no more define
+                        }
+                        int defIndex = li.IndexOf("#define");
+                        string symbol = li.Remove(0, defIndex + 7).Trim();
+                        Debug.Log("Found : " + symbol);
+                        Add(m_currentGroupTarget, symbol);
+                    }
+                }
+            }
+        }
+
         private bool Add(BuildTargetGroup t,string s)
         {
             if (!string.IsNullOrEmpty(s))
@@ -250,8 +292,6 @@ namespace AntonMakesGames.Tools
             UnityEngine.Debug.Log("Define Data created");
             return defData;
         }
-
         #endregion
-
     }
 }
